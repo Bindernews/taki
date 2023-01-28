@@ -44,6 +44,16 @@ func NewDirMeta(name string) *DirMeta {
 	}
 }
 
+// Returns the total number of files and directories in this tree.
+// This may be useful in determining progress indicators.
+func (d *DirMeta) CountTree() int {
+	ct := 1 + len(d.Files)
+	for _, d2 := range d.Dirs {
+		ct += d2.CountTree()
+	}
+	return ct
+}
+
 // Add an existing FileMeta to this directory
 func (d *DirMeta) AddFile(fm *FileMeta) {
 	d.Files[fm.Name] = fm

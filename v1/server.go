@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"io/fs"
-	"net/rpc"
 	"os"
 
 	"github.com/bindernews/taki/fsdiff"
@@ -15,17 +13,16 @@ import (
 )
 
 type ServerImpl struct {
-	cfg   *ServerConfig
+	cfg *ServerConfig
+	// Generated diff
 	fdiff *fsdiff.FsDiff
 	// Root of collected metadata
 	rootMeta *fsdiff.DirMeta
-	// Next task handle
-	nextTaskHandle TaskHandle
-	// Map of async tasks
-	tasks map[TaskHandle]task.Task
+	// Tar task
+	tarTask *TarTask
 }
 
-func (s *ServerImpl) GetRoots(req *GetRootsReq, res *GetRootsRes) (err error) {
+func (s *ServerImpl) GetRoots(req Empty, res *GetRootsRes) (err error) {
 	// Init vars and return values
 	var rootInode, curInode uint
 	var procItems []os.DirEntry
@@ -58,7 +55,7 @@ func (s *ServerImpl) GetRoots(req *GetRootsReq, res *GetRootsRes) (err error) {
 	return nil
 }
 
-func (s *ServerImpl) GenerateDiff(req *GenerateDiffReq, res *GenerateDiffRes) (err error) {
+func (s *ServerImpl) GenerateDiff(req *GenerateDiffReq, res *Empty) (err error) {
 	if s.cfg == nil {
 		return errors.New("config is not set")
 	}
@@ -75,7 +72,8 @@ func (s *ServerImpl) GenerateDiff(req *GenerateDiffReq, res *GenerateDiffRes) (e
 	return
 }
 
-func (s *ServerImpl) CollectFilesStart(req Empty, handle *TaskHandle) error {
+// Start collecting files into an archive
+func (s *ServerImpl) TarStart(req Empty, res *Empty) error {
 	// Get the files and their corresponding sizes
 	files := s.fdiff.GetAddedModified()
 	sizes := lo.Map(files, func(path string, _ int) int64 {
@@ -87,63 +85,29 @@ func (s *ServerImpl) CollectFilesStart(req Empty, handle *TaskHandle) error {
 		}
 	})
 
-	tt := &TarTask{
+	s.tarTask = &TarTask{
 		BaseTask:  task.NewBaseTask(),
 		Output:    s.cfg.Output,
 		Root:      s.cfg.Root,
 		Files:     files,
 		FileSizes: sizes,
 	}
-	// Add and start the task
-	*handle = s.addTask(tt)
-	go tt.Run(context.Background())
+	go s.tarTask.Run(context.Background())
 	return nil
 }
 
-func (s *ServerImpl) TaskProgress(handle TaskHandle, res *float64) error {
-	tt := s.tasks[handle]
-	if tt == nil {
-		return ErrTaskNotExist
-	}
-	// TODO check if task is done and if so return error if task responded with error
-	if prog, ok := s.tasks[handle].(task.Progressive); ok {
-		*res = prog.GetProgress()
-		return nil
+// Get the progress of the tar task
+func (s *ServerImpl) TarProgress(req Empty, res *float64) error {
+	if s.tarTask == nil {
+		return ErrTaskNotStarted
 	} else {
-		return ErrTaskNotProgressive
+		*res = s.tarTask.GetProgress()
+		return nil
 	}
 }
 
 func (s *ServerImpl) SetConfig(config *ServerConfig, res *bool) error {
 	s.cfg = config
 	*res = true
-	return nil
-}
-
-func (s *ServerImpl) addTask(t task.Task) TaskHandle {
-	h := s.nextTaskHandle
-	s.nextTaskHandle += 1
-	s.tasks[h] = t
-	return h
-}
-
-func main() {
-	fmt.Println(SERVER_START_LINE)
-	conn := &StdioRw{
-		Reader: os.Stdin,
-		Writer: os.Stdout,
-	}
-	rpc.RegisterName(RPC_FILE_CLS, NewRpcFile())
-	rpc.RegisterName("ServerApi", &ServerImpl{})
-
-	go rpc.ServeConn(conn)
-}
-
-type StdioRw struct {
-	io.Reader
-	io.Writer
-}
-
-func (rw *StdioRw) Close() error {
 	return nil
 }

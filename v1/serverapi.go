@@ -15,22 +15,11 @@ var ErrTaskNotExist = errors.New("task does not exist")
 // Error when a task does not implement the Progressive interface
 var ErrTaskNotProgressive = errors.New("task does not implement Progressive")
 
-// Handle for server tasks
-type TaskHandle uint
-
-type ServerApi interface {
-	GetRoots(req *GetRootsReq, res *GetRootsRes) error
-	SetConfig(config *ServerConfig, res *Empty) error
-	GenerateDiff(req *GenerateDiffReq, res *GenerateDiffRes) error
-	// Start collecting files into an archive
-	CollectFilesStart(req Empty, handle *TaskHandle) error
-	// Poll the progress of a task, may take a while to return
-	TaskProgress(handle TaskHandle, progress *float64) error
-}
+// Indicates that a task has not started
+var ErrTaskNotStarted = errors.New("task not started")
 
 type Empty struct{}
 
-type GetRootsReq struct{}
 type GetRootsRes struct {
 	Roots []string
 }
@@ -38,7 +27,6 @@ type GetRootsRes struct {
 type GenerateDiffReq struct {
 	Base *fsdiff.DirMeta
 }
-type GenerateDiffRes struct{}
 
 type CollectFilesRes struct {
 	// Number of bytes collected

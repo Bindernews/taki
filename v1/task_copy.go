@@ -18,8 +18,13 @@ type TaskCopy struct {
 }
 
 func NewTaskCopy(src io.ReadSeekCloser, dst io.WriteCloser) *TaskCopy {
-	// TODO
-	return nil
+	return &TaskCopy{
+		BaseTask:    task.NewBaseTask(),
+		src:         src,
+		dst:         dst,
+		bytesCopied: 0,
+		totalSize:   0,
+	}
 }
 
 func (t *TaskCopy) Start() task.Void {
@@ -55,4 +60,10 @@ func (t *TaskCopy) Start() task.Void {
 	}
 
 	return t.Ok(t.totalSize)
+}
+
+func (t *TaskCopy) GetProgress() float64 {
+	a := atomic.LoadInt64(&t.bytesCopied)
+	b := t.totalSize
+	return float64(a) / float64(b)
 }

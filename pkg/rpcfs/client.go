@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// Client side of RpcFs.
 type RpcFs struct {
 	// Client connected to server
 	client *rpc.Client

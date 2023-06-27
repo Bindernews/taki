@@ -6,7 +6,7 @@ import (
 	"net/rpc"
 	"os"
 
-	"github.com/bindernews/taki/rpcfs"
+	"github.com/bindernews/taki/pkg/rpcfs"
 	"github.com/bindernews/taki/v1"
 )
 

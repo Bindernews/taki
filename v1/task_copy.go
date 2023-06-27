@@ -42,7 +42,6 @@ func (t *TaskCopy) Start() task.Void {
 	for {
 		if ns, err = t.src.Read(buf[:]); err != nil {
 			if err == io.EOF {
-				err = nil
 				break
 			} else {
 				return t.Fail(err)

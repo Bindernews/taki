@@ -6,9 +6,14 @@ import (
 	"github.com/samber/lo"
 )
 
+// A filesystem-diff, determines a full list of files that have been
+// added, modified, and removed.
 type FsDiff struct {
-	Added    []string
-	Removed  []string
+	// Full paths of files that were added
+	Added []string
+	// Full paths of files that were removed
+	Removed []string
+	// Full paths of files that were modified
 	Modified []string
 }
 
@@ -24,6 +29,7 @@ func (d *FsDiff) GetAddedModified() []string {
 	return lst
 }
 
+// Compare two directory metadata objects, building a full diff of them.
 func (d *FsDiff) Compare(lt *DirMeta, rt *DirMeta) error {
 	return d.compareDirs("", lt, rt)
 }
@@ -73,18 +79,34 @@ func (d *FsDiff) compareDirs(root string, lt *DirMeta, rt *DirMeta) error {
 	return nil
 }
 
+// Adds all files and directories in the given root recursively to self.
 func (d *FsDiff) recAdded(root string, dm *DirMeta) {
-	// TODO
+	// Track files
+	addedFiles := lo.Keys(dm.Files)
+	prependDir(addedFiles, root)
+	d.Added = append(d.Added, addedFiles...)
+	// Recurse into directories
+	for _, dir := range dm.Dirs {
+		d.recAdded(path.Join(root, dir.Name), dir)
+	}
 }
 
+// Lists all files and directories recursively in 'dm' as being removed in self.
 func (d *FsDiff) recRemoved(root string, dm *DirMeta) {
-	// TODO
+	// Track files
+	removedFiles := lo.Keys(dm.Files)
+	prependDir(removedFiles, root)
+	d.Removed = append(d.Removed, removedFiles...)
+	// Recurse into directories
+	for _, dir := range dm.Dirs {
+		d.recRemoved(path.Join(root, dir.Name), dir)
+	}
 }
 
+// Helper function to prepend 'dir' to each value in 'files'.
+// This modifies 'files'.
 func prependDir(files []string, dir string) {
 	for i, n := range files {
 		files[i] = path.Join(dir, n)
 	}
 }
-
-// func (d *FsDiff)

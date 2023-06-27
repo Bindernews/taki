@@ -3,7 +3,7 @@ package taki
 import (
 	"errors"
 
-	"github.com/bindernews/taki/fsdiff"
+	"github.com/bindernews/taki/pkg/fsdiff"
 )
 
 // Line that is printed prior to switching to binary encoding

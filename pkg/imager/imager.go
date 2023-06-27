@@ -1,4 +1,6 @@
-package taki
+// An Imager runs kubectl and communicates with the server to image a given container.
+// Multiple imagers may be run at once.
+package imager
 
 import (
 	"bufio"
@@ -11,7 +13,8 @@ import (
 	"sync/atomic"
 	"unsafe"
 
-	"github.com/bindernews/taki/rpcfs"
+	"github.com/bindernews/taki/pkg/rpcfs"
+	"github.com/bindernews/taki/v1"
 )
 
 const CONTAINER_NAME_PREFIX = "Defaulting debug container name to "
@@ -53,6 +56,7 @@ type Imager struct {
 	updateC chan struct{}
 }
 
+// Returns a new imager created with the given configuration.
 func NewImager(parent context.Context, config ImagerConfig) *Imager {
 	m := &Imager{
 		config:      config,
@@ -86,6 +90,9 @@ func (m *Imager) Start() (err error) {
 		return
 	}
 	m.debugContainerName, err = WaitForServerStart(pio.Reader)
+	if err != nil {
+		return
+	}
 
 	// Server is running on remote, setup ClientApi
 	m.client = NewClientApi(m.ctx, pio)
@@ -120,7 +127,7 @@ func (m *Imager) Start() (err error) {
 	}
 
 	// Set config
-	conf := ServerConfig{
+	conf := taki.ServerConfig{
 		Output:  OUTPUT_PATH,
 		Root:    possibleRoots[0],
 		Exclude: mounts,
@@ -212,7 +219,7 @@ func (m *Imager) DownloadFile(remotePath, localPath string) error {
 	}
 	defer dst.Close()
 	// Copy task, later we can make progress accessible
-	t := NewTaskCopy(src, dst)
+	t := taki.NewTaskCopy(src, dst)
 	go t.Start()
 	for {
 		prog := t.GetProgress()
@@ -241,7 +248,7 @@ func WaitForServerStart(rd *bufio.Reader) (containerName string, err error) {
 			s2 = s2[:len(s2)-1]
 			containerName = s2
 		}
-		if ln == SERVER_START_LINE {
+		if ln == taki.SERVER_START_LINE {
 			return
 		}
 	}

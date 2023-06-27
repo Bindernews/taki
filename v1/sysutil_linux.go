@@ -5,7 +5,7 @@ import (
 	"syscall"
 )
 
-func GetInode(path string) {
+func GetInode(path string) (uint, error) {
 	var info os.FileInfo
 	if info, err = os.Stat(path); err != nil {
 		return

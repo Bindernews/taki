@@ -5,7 +5,7 @@ import (
 	"log"
 	"testing"
 
-	"github.com/bindernews/taki/rpcfs"
+	"github.com/bindernews/taki/pkg/rpcfs"
 )
 
 func TestInterfaces(t *testing.T) {

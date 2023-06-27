@@ -5,6 +5,7 @@ import (
 	"os"
 )
 
+// rpc class name for requests
 const RPC_FILE_CLS = "RpcFsServer"
 
 type RpcFsServer struct {

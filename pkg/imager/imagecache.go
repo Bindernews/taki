@@ -1,4 +1,4 @@
-package taki
+package imager
 
 import (
 	"archive/tar"
@@ -6,7 +6,7 @@ import (
 	"path"
 	"sync"
 
-	"github.com/bindernews/taki/fsdiff"
+	"github.com/bindernews/taki/pkg/fsdiff"
 	"github.com/bindernews/taki/task"
 )
 

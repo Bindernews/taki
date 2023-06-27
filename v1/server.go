@@ -7,7 +7,7 @@ import (
 	"io/fs"
 	"os"
 
-	"github.com/bindernews/taki/fsdiff"
+	"github.com/bindernews/taki/pkg/fsdiff"
 	"github.com/bindernews/taki/task"
 	"github.com/samber/lo"
 )

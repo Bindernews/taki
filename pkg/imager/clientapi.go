@@ -1,11 +1,12 @@
-package taki
+package imager
 
 import (
 	"context"
 	"io"
 	"net/rpc"
 
-	"github.com/bindernews/taki/fsdiff"
+	"github.com/bindernews/taki/pkg/fsdiff"
+	"github.com/bindernews/taki/v1"
 )
 
 type ClientApi struct {
@@ -23,8 +24,8 @@ func NewClientApi(ctx context.Context, conn io.ReadWriteCloser) *ClientApi {
 // Attemts to determine a path to access the root of the target container from
 // the debug container.
 func (c *ClientApi) GetTargetRoots() ([]string, error) {
-	req := Empty{}
-	res := GetRootsRes{}
+	req := taki.Empty{}
+	res := taki.GetRootsRes{}
 	if err := c.RpcCall("GetRoots", req, &res); err != nil {
 		return nil, err
 	}
@@ -32,26 +33,26 @@ func (c *ClientApi) GetTargetRoots() ([]string, error) {
 }
 
 func (c *ClientApi) GenerateDiff(meta *fsdiff.DirMeta) (err error) {
-	req := GenerateDiffReq{Base: meta}
-	res := Empty{}
+	req := taki.GenerateDiffReq{Base: meta}
+	res := taki.Empty{}
 	if err = c.RpcCall("GenerateDiff", &req, &res); err != nil {
 		return
 	}
 	return
 }
 
-func (c *ClientApi) SetConfig(config *ServerConfig) (err error) {
-	res := Empty{}
+func (c *ClientApi) SetConfig(config *taki.ServerConfig) (err error) {
+	res := taki.Empty{}
 	return c.RpcCall("SetConfig", config, &res)
 }
 
 func (c *ClientApi) TarStart() error {
-	return c.RpcCall("TarStart", Empty{}, &Empty{})
+	return c.RpcCall("TarStart", taki.Empty{}, &taki.Empty{})
 }
 
 func (c *ClientApi) TarProgress() (float64, error) {
 	var progress float64 = 0
-	err := c.RpcCall("TaskProgress", Empty{}, &progress)
+	err := c.RpcCall("TarProgress", taki.Empty{}, &progress)
 	return progress, err
 }
 

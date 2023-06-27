@@ -94,6 +94,7 @@ func (tt *TarTask) Run(ctx context.Context) task.Void {
 		err = nil
 	} else {
 		// TODO close/kill process
+		_ = tt.proc.Process.Kill()
 	}
 	if err != nil {
 		tt.Fail(err)

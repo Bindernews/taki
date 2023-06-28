@@ -12,7 +12,7 @@ import (
 
 var (
 	kubectlCmd      string
-	targetPod       string
+	targetPods      []string
 	targetContainer string
 	imagePath       string
 )
@@ -20,6 +20,15 @@ var (
 func init() {
 	rootCmd.Flags().StringVarP(&kubectlCmd, "kubectl", "k", "kubectl",
 		`the kubectl cli command (default: kubectl)`)
+	rootCmd.Flags().StringArrayVarP(&targetPods, "pod", "p", []string{},
+		`the pod(s) to debug, may be given multiple times`)
+	rootCmd.MarkFlagRequired("pod")
+	rootCmd.Flags().StringVarP(&targetContainer, "container", "c", "",
+		`the container to image in the given pod(s)`)
+	rootCmd.MarkFlagRequired("container")
+	rootCmd.Flags().StringVar(&imagePath, "image", "",
+		`local path to base image to compare against`)
+	rootCmd.MarkFlagRequired("image")
 }
 
 var rootCmd = &cobra.Command{
@@ -30,17 +39,16 @@ var rootCmd = &cobra.Command{
 		ctx, cancelFn := context.WithCancel(context.Background())
 		defer cancelFn()
 
-		localCache := &imager.ImageCache{}
-		imageTask := imager.NewImager(ctx, imager.ImagerConfig{
+		config := imager.ImagerConfig{
 			KubectlCmd: strings.Split(kubectlCmd, " "),
-			Pod:        targetPod,
+			Pod:        "",
 			Container:  targetContainer,
 			BaseImage:  imagePath,
-			MetaCache:  localCache,
-		})
-		if err := imageTask.Start(); err != nil {
-			fmt.Fprintf(os.Stderr, "error: '%s'", err)
-			os.Exit(1)
+		}
+		for i, err := range imager.SimpleImagePods(ctx, config, targetPods) {
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error for pod '%s': '%s'", targetPods[i], err)
+			}
 		}
 	},
 }

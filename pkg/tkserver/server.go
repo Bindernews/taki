@@ -1,4 +1,4 @@
-package taki
+package tkserver
 
 import (
 	"context"
@@ -8,11 +8,13 @@ import (
 	"os"
 
 	"github.com/bindernews/taki/pkg/fsdiff"
-	"github.com/bindernews/taki/task"
+	"github.com/bindernews/taki/pkg/task"
 	"github.com/samber/lo"
 )
 
-type ServerImpl struct {
+const TAKI_SERVER_CLASS = "TakiServer"
+
+type TakiServer struct {
 	cfg *ServerConfig
 	// Generated diff
 	fdiff *fsdiff.FsDiff
@@ -22,7 +24,7 @@ type ServerImpl struct {
 	tarTask *TarTask
 }
 
-func (s *ServerImpl) GetRoots(req Empty, res *GetRootsRes) (err error) {
+func (s *TakiServer) GetRoots(req Empty, res *GetRootsRes) (err error) {
 	// Init vars and return values
 	var rootInode, curInode uint
 	var procItems []os.DirEntry
@@ -55,7 +57,7 @@ func (s *ServerImpl) GetRoots(req Empty, res *GetRootsRes) (err error) {
 	return nil
 }
 
-func (s *ServerImpl) GenerateDiff(req *GenerateDiffReq, res *Empty) (err error) {
+func (s *TakiServer) GenerateDiff(req *GenerateDiffReq, res *Empty) (err error) {
 	if s.cfg == nil {
 		return errors.New("config is not set")
 	}
@@ -73,7 +75,7 @@ func (s *ServerImpl) GenerateDiff(req *GenerateDiffReq, res *Empty) (err error) 
 }
 
 // Start collecting files into an archive
-func (s *ServerImpl) TarStart(req Empty, res *Empty) error {
+func (s *TakiServer) TarStart(req Empty, res *Empty) error {
 	// Get the files and their corresponding sizes
 	files := s.fdiff.GetAddedModified()
 	sizes := lo.Map(files, func(path string, _ int) int64 {
@@ -97,7 +99,7 @@ func (s *ServerImpl) TarStart(req Empty, res *Empty) error {
 }
 
 // Get the progress of the tar task
-func (s *ServerImpl) TarProgress(req Empty, res *float64) error {
+func (s *TakiServer) TarProgress(req Empty, res *float64) error {
 	if s.tarTask == nil {
 		return ErrTaskNotStarted
 	} else {
@@ -106,7 +108,7 @@ func (s *ServerImpl) TarProgress(req Empty, res *float64) error {
 	}
 }
 
-func (s *ServerImpl) SetConfig(config *ServerConfig, res *bool) error {
+func (s *TakiServer) SetConfig(config *ServerConfig, res *bool) error {
 	s.cfg = config
 	*res = true
 	return nil

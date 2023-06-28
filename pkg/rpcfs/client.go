@@ -71,7 +71,7 @@ func (f *RpcFs) ReadDir(path string) ([]fs.DirEntry, error) {
 }
 
 func (f *RpcFs) rpcCall(method string, args, reply any) error {
-	methodReal := RPC_FILE_CLS + method
+	methodReal := RPC_FILE_CLASS + method
 	call := f.client.Go(methodReal, args, reply, nil)
 	select {
 	case <-call.Done:

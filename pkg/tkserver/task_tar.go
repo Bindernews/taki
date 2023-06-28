@@ -1,4 +1,4 @@
-package taki
+package tkserver
 
 import (
 	"bufio"
@@ -9,7 +9,7 @@ import (
 	"os/exec"
 	"sync/atomic"
 
-	"github.com/bindernews/taki/task"
+	"github.com/bindernews/taki/pkg/task"
 )
 
 type TarTask struct {

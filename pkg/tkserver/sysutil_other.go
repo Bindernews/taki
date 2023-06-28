@@ -1,4 +1,6 @@
-package taki
+// -build linux
+
+package tkserver
 
 import "errors"
 

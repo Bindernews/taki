@@ -6,15 +6,13 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
-	"sync/atomic"
-	"unsafe"
 
 	"github.com/bindernews/taki/pkg/rpcfs"
-	"github.com/bindernews/taki/v1"
+	"github.com/bindernews/taki/pkg/task"
+	"github.com/bindernews/taki/pkg/tkserver"
 )
 
 const CONTAINER_NAME_PREFIX = "Defaulting debug container name to "
@@ -30,10 +28,25 @@ type ImagerConfig struct {
 	Pod string
 	// Container on the pod
 	Container string
+	// Debug image name and version (default: "taki-collector")
+	DebugImage string
+	// List of paths to ignore
+	Ignored []string
 	// Image cache instance
 	MetaCache *ImageCache
 	// Base image path
 	BaseImage string
+}
+
+// Returns a copy of the config with default values set if they weren't already.
+func (c ImagerConfig) Defaults() ImagerConfig {
+	if c.DebugImage == "" {
+		c.DebugImage = "taki-collector"
+	}
+	if c.MetaCache == nil {
+		c.MetaCache = &ImageCache{}
+	}
+	return c
 }
 
 type Imager struct {
@@ -51,7 +64,7 @@ type Imager struct {
 	// Current task name
 	currentTask string
 	// Current progress
-	curProgress uint64
+	curProgress *task.AtomicFloat64
 	// Update channel
 	updateC chan struct{}
 }
@@ -59,9 +72,9 @@ type Imager struct {
 // Returns a new imager created with the given configuration.
 func NewImager(parent context.Context, config ImagerConfig) *Imager {
 	m := &Imager{
-		config:      config,
+		config:      config.Defaults(),
 		currentTask: "",
-		curProgress: 0,
+		curProgress: task.NewF64(0),
 		updateC:     make(chan struct{}),
 	}
 	// Initialize some internal variables
@@ -76,7 +89,14 @@ func (m *Imager) Start() (err error) {
 	var progress float64
 
 	// Build list of all arguments
-	allArgs := append(m.config.KubectlCmd, "") // TODO
+	allArgs := append(
+		m.config.KubectlCmd,
+		"debug",
+		m.config.Pod,
+		"-it",
+		"--container="+m.config.Container,
+		"--image="+m.config.DebugImage,
+	)
 
 	// Get pod metadata and verify that container exists, etc. Get image name.
 	// TODO
@@ -111,11 +131,9 @@ func (m *Imager) Start() (err error) {
 	// TODO get mounts so we can exlude them
 	mounts := make([]string, 0)
 
-	//
+	// Wait for DirMeta to be ready
 	m.currentTask = taskLocalMeta
 	m.setProgress(-1)
-
-	// Wait for DirMeta to be ready
 	select {
 	case <-metaReq.Done():
 		err = metaReq.Err()
@@ -127,10 +145,11 @@ func (m *Imager) Start() (err error) {
 	}
 
 	// Set config
-	conf := taki.ServerConfig{
+	excludes := append(mounts, m.config.Ignored...)
+	conf := tkserver.ServerConfig{
 		Output:  OUTPUT_PATH,
 		Root:    possibleRoots[0],
-		Exclude: mounts,
+		Exclude: excludes,
 	}
 	if err = m.client.SetConfig(&conf); err != nil {
 		return
@@ -175,6 +194,11 @@ func (m *Imager) GetOutputName() string {
 	return fmt.Sprintf("%s_%s.tar.xz", m.config.Pod, m.config.Container)
 }
 
+// Close the update channel so the imager does not block.
+func (m *Imager) CloseUpdates() {
+	close(m.updateC)
+}
+
 // Gets the update channel, which will trigger when a progress update
 // occurs. Current progress and current task can be obtained with
 // the relevant methods.
@@ -190,16 +214,12 @@ func (m *Imager) GetTask() string {
 // Returns the progress amount on the current task, if applicable, or -1
 // if the current task has no progress indicator.
 func (m *Imager) GetProgress() float64 {
-	// Convert uint64 to float64 and return
-	v := atomic.LoadUint64(&m.curProgress)
-	return *(*float64)(unsafe.Pointer(&v))
+	return m.curProgress.Get()
 }
 
 // Helper to internally set the progress
 func (m *Imager) setProgress(p float64) {
-	// convert float64 to uint64 and store
-	v := *(*uint64)(unsafe.Pointer(&p))
-	atomic.StoreUint64(&m.curProgress, v)
+	m.curProgress.Set(p)
 	// Send to update channel
 	m.updateC <- struct{}{}
 }
@@ -219,7 +239,7 @@ func (m *Imager) DownloadFile(remotePath, localPath string) error {
 	}
 	defer dst.Close()
 	// Copy task, later we can make progress accessible
-	t := taki.NewTaskCopy(src, dst)
+	t := tkserver.NewTaskCopy(src, dst)
 	go t.Start()
 	for {
 		prog := t.GetProgress()
@@ -248,50 +268,8 @@ func WaitForServerStart(rd *bufio.Reader) (containerName string, err error) {
 			s2 = s2[:len(s2)-1]
 			containerName = s2
 		}
-		if ln == taki.SERVER_START_LINE {
+		if ln == tkserver.SERVER_START_LINE {
 			return
 		}
-	}
-}
-
-// Takes an exec.Cmd and wraps the Stdin and Stdout/Stderr in buffered
-// readers/writers. Stdout and Stderr are combined into one stream.
-type ProcIO struct {
-	*bufio.ReadWriter
-	// Process
-	proc *exec.Cmd
-	// Things to close
-	toClose []io.Closer
-}
-
-func NewProcIO(proc *exec.Cmd) (*ProcIO, error) {
-	inRaw, err := proc.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-	inBuf := bufio.NewWriter(inRaw)
-
-	outRd, outWr := io.Pipe()
-	proc.Stderr = outWr
-	proc.Stdout = outWr
-	parent := bufio.NewReadWriter(bufio.NewReader(outRd), inBuf)
-	return &ProcIO{
-		ReadWriter: parent,
-		proc:       proc,
-		toClose:    []io.Closer{inRaw, outRd, outWr},
-	}, nil
-}
-
-func (p *ProcIO) Close() error {
-	errList := make([]error, 0)
-	for _, c := range p.toClose {
-		if err := c.Close(); err != nil {
-			errList = append(errList, err)
-		}
-	}
-	if len(errList) > 0 {
-		return fmt.Errorf("%+v", errList)
-	} else {
-		return nil
 	}
 }

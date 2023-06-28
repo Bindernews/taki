@@ -7,17 +7,17 @@ import (
 	"os"
 
 	"github.com/bindernews/taki/pkg/rpcfs"
-	"github.com/bindernews/taki/v1"
+	"github.com/bindernews/taki/pkg/tkserver"
 )
 
 func main() {
-	fmt.Println(taki.SERVER_START_LINE)
+	fmt.Println(tkserver.SERVER_START_LINE)
 	conn := &StdioRw{
 		Reader: os.Stdin,
 		Writer: os.Stdout,
 	}
-	rpc.RegisterName(rpcfs.RPC_FILE_CLS, rpcfs.NewRpcFsServer("/"))
-	rpc.RegisterName("ServerApi", &taki.ServerImpl{})
+	rpc.RegisterName(rpcfs.RPC_FILE_CLASS, rpcfs.NewRpcFsServer("/"))
+	rpc.RegisterName(tkserver.TAKI_SERVER_CLASS, &tkserver.TakiServer{})
 
 	go rpc.ServeConn(conn)
 }

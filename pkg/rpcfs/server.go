@@ -6,7 +6,7 @@ import (
 )
 
 // rpc class name for requests
-const RPC_FILE_CLS = "RpcFsServer"
+const RPC_FILE_CLASS = "RpcFsServer"
 
 type RpcFsServer struct {
 	// Next virtual FD

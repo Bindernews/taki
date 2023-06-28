@@ -29,7 +29,7 @@ func newRemoteFile(parent context.Context, client *rpc.Client, fd uint) *RemoteF
 }
 
 func (rf *RemoteFile) Close() error {
-	const METHOD = RPC_FILE_CLS + ".Fclose"
+	const METHOD = RPC_FILE_CLASS + ".Fclose"
 	if rf.fdint == 0 {
 		return nil
 	}
@@ -45,7 +45,7 @@ func (rf *RemoteFile) Close() error {
 }
 
 func (rf *RemoteFile) Stat() (fs.FileInfo, error) {
-	const METHOD = RPC_FILE_CLS + ".Fstat"
+	const METHOD = RPC_FILE_CLASS + ".Fstat"
 	var res fs.FileInfo
 	err := rf.callWait(rf.client.Go(METHOD, rf.fdint, &res, rf.callCh))
 	if err != nil {
@@ -56,7 +56,7 @@ func (rf *RemoteFile) Stat() (fs.FileInfo, error) {
 }
 
 func (rf *RemoteFile) Read(b []byte) (n int, err error) {
-	const METHOD = RPC_FILE_CLS + ".Fread"
+	const METHOD = RPC_FILE_CLASS + ".Fread"
 	req := FreadReq{Fd: rf.fdint, N: len(b)}
 	res := FreadRes{}
 	if err = rf.callWait(rf.client.Go(METHOD, &req, &res, rf.callCh)); err != nil {
@@ -67,7 +67,7 @@ func (rf *RemoteFile) Read(b []byte) (n int, err error) {
 }
 
 func (rf *RemoteFile) Write(b []byte) (n int, err error) {
-	const METHOD = RPC_FILE_CLS + ".Fwrite"
+	const METHOD = RPC_FILE_CLASS + ".Fwrite"
 	req := FwriteReq{Fd: rf.fdint, B: b}
 	res := FwriteRes{}
 	if err = rf.callWait(rf.client.Go(METHOD, &req, &res, rf.callCh)); err != nil {
@@ -78,7 +78,7 @@ func (rf *RemoteFile) Write(b []byte) (n int, err error) {
 }
 
 func (rf *RemoteFile) Seek(offset int64, whence int) (pos int64, err error) {
-	const METHOD = RPC_FILE_CLS + ".Fseek"
+	const METHOD = RPC_FILE_CLASS + ".Fseek"
 	req := FseekReq{Fd: rf.fdint, Offset: offset, Whence: whence}
 	res := FseekRes{}
 	if err = rf.callWait(rf.client.Go(METHOD, &req, &res, rf.callCh)); err != nil {

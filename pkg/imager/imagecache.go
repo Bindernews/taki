@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	"github.com/bindernews/taki/pkg/fsdiff"
-	"github.com/bindernews/taki/task"
+	"github.com/bindernews/taki/pkg/task"
 )
 
 // Caches DirMeta objects for base images (tar files).
